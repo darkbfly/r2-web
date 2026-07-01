@@ -307,6 +307,11 @@ class UIManager {
     })
   }
 
+  dismissPrompt() {
+    const dialog = /** @type {HTMLDialogElement} */ ($('#prompt-dialog'))
+    if (dialog.open) dialog.close()
+  }
+
   /** @param {string} title @param {string} message @returns {Promise<boolean>} */
   confirm(title, message) {
     return new Promise((resolve) => {

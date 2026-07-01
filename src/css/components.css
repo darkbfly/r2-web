@@ -1395,6 +1395,29 @@
         -webkit-overflow-scrolling: touch;
       }
 
+      & .pdf-page-block {
+        contain: layout style;
+      }
+
+      & .pdf-load-progress {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        width: min(320px, 80%);
+
+        & p {
+          margin: 0;
+          color: var(--text-tertiary);
+          font-size: var(--text-sm);
+          text-align: center;
+        }
+
+        & .upload-progress {
+          width: 100%;
+        }
+      }
+
       & .pdf-page {
         display: flex;
         justify-content: center;

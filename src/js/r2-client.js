@@ -92,10 +92,10 @@ class R2Client {
     return { url: req.url, headers: Object.fromEntries(req.headers.entries()) }
   }
 
-  /** @param {string} key */
-  async getObject(key) {
+  /** @param {string} key @param {AbortSignal} [signal] */
+  async getObject(key, signal) {
     const url = `${/** @type {ConfigManager} */ (this.#config).getBucketUrl()}/${encodeS3Key(key)}`
-    const res = await /** @type {AwsClient} */ (this.#client).fetch(url)
+    const res = await /** @type {AwsClient} */ (this.#client).fetch(url, { signal })
     if (!res.ok) {
       if (res.status === 401) throw new Error('HTTP_401')
       if (res.status === 403) throw new Error('HTTP_403')
@@ -136,10 +136,10 @@ class R2Client {
     return null
   }
 
-  /** @param {string} key */
-  async headObject(key) {
+  /** @param {string} key @param {AbortSignal} [signal] */
+  async headObject(key, signal) {
     const url = `${/** @type {ConfigManager} */ (this.#config).getBucketUrl()}/${encodeS3Key(key)}`
-    const res = await /** @type {AwsClient} */ (this.#client).fetch(url, { method: 'HEAD' })
+    const res = await /** @type {AwsClient} */ (this.#client).fetch(url, { method: 'HEAD', signal })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return {
       contentType: res.headers.get('content-type'),
