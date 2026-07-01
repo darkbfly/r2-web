@@ -17,6 +17,7 @@ export const TEXT_RE =
   /\.(txt|md|json|xml|csv|html|css|js|ts|jsx|tsx|yaml|yml|toml|ini|cfg|conf|log|sh|bash|py|rb|go|rs|java|c|cpp|h|hpp|sql|env|gitignore|dockerfile)$/i
 export const AUDIO_RE = /\.(mp3|wav|ogg|flac|aac|m4a|wma)$/i
 export const VIDEO_RE = /\.(mp4|webm|ogg|mov|avi|mkv|m4v)$/i
+export const PDF_RE = /\.pdf$/i
 export const DOCUMENT_RE = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf)$/i
 export const ARCHIVE_RE = /\.(zip|rar|7z|tar|gz|bz2|xz|tgz)$/i
 export const CODE_RE = /\.(js|ts|jsx|tsx|py|rb|go|rs|java|c|cpp|h|hpp|sh|bash)$/i

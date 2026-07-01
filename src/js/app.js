@@ -249,6 +249,7 @@ class App {
     $('#preview-copy-image').dataset.tooltip = t('copyImage')
     $('#preview-copy').dataset.tooltip = t('copyLink')
     $('#preview-download').dataset.tooltip = t('download')
+    $('#preview-fullscreen').dataset.tooltip = t('fullscreen')
     $('#preview-close').dataset.tooltip = t('close')
     $('#file-qr-close').dataset.tooltip = t('close')
     $('#view-grid-btn').dataset.tooltip = t('viewGrid')
@@ -779,6 +780,7 @@ class App {
     $('#load-more-btn').addEventListener('click', () => /** @type {FileExplorer} */ (this.#explorer).loadMore())
 
     const previewDialog = /** @type {HTMLDialogElement} */ ($('#preview-dialog'))
+    const previewPanel = /** @type {HTMLElement} */ (previewDialog.querySelector('.dialog-panel'))
     $('#preview-close').addEventListener('click', () => previewDialog.close())
     previewDialog.addEventListener('click', (e) => {
       if (e.target === previewDialog) previewDialog.close()
@@ -791,6 +793,28 @@ class App {
       /** @type {FilePreview} */ (this.#preview).copyCurrentImage(),
     )
     $('#preview-copy').addEventListener('click', () => /** @type {FilePreview} */ (this.#preview).copyCurrentLink())
+
+    const fullscreenBtn = /** @type {HTMLElement} */ ($('#preview-fullscreen'))
+    const syncFullscreenTooltip = () => {
+      const active =
+        document.fullscreenElement === previewPanel || previewDialog.classList.contains('preview-maximized')
+      fullscreenBtn.dataset.tooltip = t(active ? 'exitFullscreen' : 'fullscreen')
+      this.#ui.initTooltip()
+    }
+    fullscreenBtn.addEventListener('click', () => {
+      const active =
+        document.fullscreenElement === previewPanel || previewDialog.classList.contains('preview-maximized')
+      if (active) {
+        if (document.fullscreenElement) document.exitFullscreen()
+        previewDialog.classList.remove('preview-maximized')
+      } else if (previewPanel.requestFullscreen) {
+        previewPanel.requestFullscreen().catch(() => previewDialog.classList.add('preview-maximized'))
+      } else {
+        previewDialog.classList.add('preview-maximized')
+      }
+      syncFullscreenTooltip()
+    })
+    document.addEventListener('fullscreenchange', syncFullscreenTooltip)
 
     $('#upload-panel-close').addEventListener('click', () => {
       $('#upload-panel').hidden = true

@@ -1361,6 +1361,11 @@
       align-items: center;
       justify-content: center;
 
+      &:has(.pdf-viewer) {
+        align-items: stretch;
+        justify-content: stretch;
+      }
+
       & img,
       & video {
         max-width: 100%;
@@ -1382,7 +1387,34 @@
         max-height: 100%;
         overflow: auto;
       }
+
+      & .pdf-viewer {
+        overflow: auto;
+        width: 100%;
+        height: 100%;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      & .pdf-page {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+
+      & .pdf-page canvas {
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius-sm);
+      }
     }
+  }
+
+  #preview-dialog.preview-maximized > .dialog-panel,
+  #preview-dialog > .dialog-panel:fullscreen {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    border-radius: 0;
   }
 
   /* Skeleton — inherits file-browser layout variables */

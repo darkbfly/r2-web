@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://esm.sh 'unsafe-inline'; connect-src 'self' https:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src 'self' https: blob:; worker-src blob:; frame-src 'none'; object-src 'none';"
+      content="default-src 'self'; script-src 'self' https://esm.sh 'unsafe-inline'; connect-src 'self' https:; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src 'self' https: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none';"
     />
     <meta name="description" content="轻盈优雅的 Web 原生 Cloudflare R2 文件管理器，一切皆在浏览器中完成。" />
     <title>R2 Web</title>
@@ -44,7 +44,8 @@
           "aws4fetch": "https://esm.sh/aws4fetch@1.0.20",
           "dayjs": "https://esm.sh/dayjs@1.11.19",
           "filesize": "https://esm.sh/filesize@11.0.13",
-          "qrcode": "https://esm.sh/qrcode@1.5.4"
+          "qrcode": "https://esm.sh/qrcode@1.5.4",
+          "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.10.38"
         }
       }
     </script>
@@ -1064,6 +1065,21 @@
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+            <button type="button" class="icon-btn sm" id="preview-fullscreen" data-tooltip="全屏" hidden>
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                />
               </svg>
             </button>
             <button type="button" class="icon-btn sm" id="preview-close" data-tooltip="关闭">

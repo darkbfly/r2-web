@@ -54,6 +54,7 @@
     "aws4fetch": "^1.0.20",
     "dayjs": "^1.11.19",
     "filesize": "^11.0.13",
+    "pdfjs-dist": "4.10.38",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

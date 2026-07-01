@@ -221,10 +221,10 @@ class UIManager {
    * @param {string} title
    * @param {string} label
    * @param {string} [defaultValue]
-   * @param {{ validate?: (v: string) => string | null, hint?: string, preview?: (v: string) => string }} [options]
+   * @param {{ validate?: (v: string) => string | null, hint?: string, preview?: (v: string) => string, inputType?: string }} [options]
    * @returns {Promise<string | null>}
    */
-  prompt(title, label, defaultValue = '', { validate, hint, preview } = {}) {
+  prompt(title, label, defaultValue = '', { validate, hint, preview, inputType = 'text' } = {}) {
     return new Promise((resolve) => {
       const dialog = /** @type {HTMLDialogElement} */ ($('#prompt-dialog'))
       const form = $('#prompt-form')
@@ -235,6 +235,7 @@ class UIManager {
       $('#prompt-title').textContent = title
       $('#prompt-label').textContent = label
       input.value = defaultValue
+      input.type = inputType
       errorEl.textContent = ''
       errorEl.hidden = true
       hintEl.textContent = hint ?? ''
@@ -291,6 +292,7 @@ class UIManager {
         $('#prompt-cancel').removeEventListener('click', onCancel)
         dialog.removeEventListener('click', onBackdropClick)
         previewEl.hidden = true
+        input.type = 'text'
         resolve(result)
       }
 
