@@ -9,8 +9,6 @@ import { $, formatDate, getErrorMessage, extractFileName, getMimeType } from './
 const PDF_MAX_SIZE = 50 * 1024 * 1024
 const PDF_DL_WEIGHT = 0.9
 const PDF_PARSE_WEIGHT = 0.1
-const PDF_PAGE_BLOCK = 12
-const PDF_PAGE_EST_HEIGHT = 840
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdf.worker.min.mjs', import.meta.url).href
 
@@ -27,10 +25,6 @@ class FilePreview {
   #previewGen = 0
   /** @type {import('pdfjs-dist').PDFDocumentProxy | null} */
   #pdfDoc = null
-  /** @type {IntersectionObserver | null} */
-  #pdfObserver = null
-  /** @type {IntersectionObserver | null} */
-  #pdfPageObserver = null
   /** @type {import('pdfjs-dist').RenderTask[]} */
   #pdfRenderTasks = []
   /** @type {AbortController | null} */
@@ -82,10 +76,6 @@ class FilePreview {
   }
 
   #cleanupPdf() {
-    this.#pdfObserver?.disconnect()
-    this.#pdfObserver = null
-    this.#pdfPageObserver?.disconnect()
-    this.#pdfPageObserver = null
     for (const task of this.#pdfRenderTasks) task.cancel()
     this.#pdfRenderTasks = []
     this.#pdfDoc?.destroy()
@@ -289,17 +279,6 @@ class FilePreview {
     body.classList.add('pdf-body')
     const viewer = document.createElement('div')
     viewer.className = 'pdf-viewer'
-
-    /** @type {{ blockEl: HTMLElement, startPage: number, endPage: number, mounted: boolean, pages: PageEntry[] }[]} */
-    const blocks = []
-    for (let start = 1; start <= pdf.numPages; start += PDF_PAGE_BLOCK) {
-      const end = Math.min(start + PDF_PAGE_BLOCK - 1, pdf.numPages)
-      const blockEl = document.createElement('div')
-      blockEl.className = 'pdf-page-block'
-      blockEl.style.minHeight = `${(end - start + 1) * PDF_PAGE_EST_HEIGHT}px`
-      viewer.appendChild(blockEl)
-      blocks.push({ blockEl, startPage: start, endPage: end, mounted: false, pages: [] })
-    }
     body.appendChild(viewer)
 
     const url = this.#r2.getPublicUrl(key) ?? (await this.#r2.getPresignedUrl(key))
@@ -309,140 +288,38 @@ class FilePreview {
     copyBtn.hidden = false
     previewFullscreenBtn().hidden = false
 
-    /** @typedef {{ pageNum: number, pageEl: HTMLElement, canvas: HTMLCanvasElement, rendered: boolean, rendering: boolean, cancelled: boolean, renderTask: import('pdfjs-dist').RenderTask | null, height: number }} PageEntry */
+    for (let p = 1; p <= pdf.numPages; p++) {
+      if (signal?.aborted || this.#isStale(gen) || !this.#canTouchDom(gen, body)) return
 
-    /** @type {IntersectionObserver | null} */
-    let pageObserver = null
+      const pageEl = document.createElement('div')
+      pageEl.className = 'pdf-page'
+      const canvas = document.createElement('canvas')
+      pageEl.appendChild(canvas)
+      viewer.appendChild(pageEl)
 
-    /** @param {PageEntry} entry */
-    const renderPage = async (entry) => {
-      if (entry.rendering || entry.rendered || entry.cancelled || !this.#pdfDoc || !this.#canTouchDom(gen, body)) return
-      entry.rendering = true
-      entry.cancelled = false
-      /** @type {import('pdfjs-dist').RenderTask | null} */
-      let renderTask = null
+      const page = await this.#pdfDoc.getPage(p)
+      if (signal?.aborted || this.#isStale(gen) || !this.#canTouchDom(gen, body)) return
+
+      const width = viewer.clientWidth || body.clientWidth || 800
+      const baseViewport = page.getViewport({ scale: 1 })
+      const scale = width / baseViewport.width
+      const viewport = page.getViewport({ scale })
+      const ctx = canvas.getContext('2d')
+      if (!ctx) continue
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      const renderTask = page.render({ canvasContext: ctx, viewport })
+      this.#pdfRenderTasks.push(renderTask)
       try {
-        const page = await this.#pdfDoc.getPage(entry.pageNum)
-        if (entry.cancelled || !this.#canTouchDom(gen, body)) return
-        const containerWidth = viewer.clientWidth || body.clientWidth || 800
-        const baseViewport = page.getViewport({ scale: 1 })
-        const scale = containerWidth / baseViewport.width
-        const viewport = page.getViewport({ scale })
-        const canvas = entry.canvas
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        renderTask = page.render({ canvasContext: ctx, viewport })
-        entry.renderTask = renderTask
-        this.#pdfRenderTasks.push(renderTask)
         await renderTask.promise
-        if (entry.cancelled || !this.#canTouchDom(gen, body)) return
-        entry.rendered = true
-        entry.height = canvas.offsetHeight || viewport.height
       } catch (/** @type {any} */ err) {
-        if (err?.name !== 'RenderingCancelledException') entry.rendered = false
+        if (err?.name === 'RenderingCancelledException') return
+        throw err
       } finally {
-        entry.rendering = false
-        entry.renderTask = null
-        if (renderTask) {
-          const i = this.#pdfRenderTasks.indexOf(renderTask)
-          if (i >= 0) this.#pdfRenderTasks.splice(i, 1)
-        }
+        const i = this.#pdfRenderTasks.indexOf(renderTask)
+        if (i >= 0) this.#pdfRenderTasks.splice(i, 1)
       }
     }
-
-    /** @param {PageEntry} entry */
-    const releasePage = (entry) => {
-      entry.cancelled = true
-      if (entry.renderTask) {
-        entry.renderTask.cancel()
-        entry.renderTask = null
-      }
-      entry.rendering = false
-      if (!entry.rendered) return
-      entry.rendered = false
-      entry.canvas.width = 0
-      entry.canvas.height = 0
-      entry.height = 0
-    }
-
-    /** @param {typeof blocks[number]} block */
-    const mountBlock = (block) => {
-      if (block.mounted || !this.#canTouchDom(gen, body)) return
-      block.mounted = true
-      block.blockEl.innerHTML = ''
-      for (let p = block.startPage; p <= block.endPage; p++) {
-        const pageEl = document.createElement('div')
-        pageEl.className = 'pdf-page'
-        const canvas = document.createElement('canvas')
-        pageEl.appendChild(canvas)
-        block.blockEl.appendChild(pageEl)
-        /** @type {PageEntry} */
-        const entry = {
-          pageNum: p,
-          pageEl,
-          canvas,
-          rendered: false,
-          rendering: false,
-          cancelled: false,
-          renderTask: null,
-          height: 0,
-        }
-        block.pages.push(entry)
-        pageObserver?.observe(pageEl)
-      }
-    }
-
-    /** @param {typeof blocks[number]} block */
-    const unmountBlock = (block) => {
-      if (!block.mounted) return
-      let blockHeight = 0
-      for (const entry of block.pages) {
-        releasePage(entry)
-        pageObserver?.unobserve(entry.pageEl)
-        if (entry.height > 0) blockHeight += entry.height + 8
-      }
-      if (blockHeight > 0) block.blockEl.style.minHeight = `${blockHeight}px`
-      block.blockEl.innerHTML = ''
-      block.pages = []
-      block.mounted = false
-    }
-
-    pageObserver = new IntersectionObserver(
-      (entries) => {
-        if (!this.#canTouchDom(gen, body)) return
-        for (const e of entries) {
-          const block = blocks.find((b) => b.pages.some((p) => p.pageEl === e.target))
-          if (!block) continue
-          const idx = block.pages.findIndex((p) => p.pageEl === e.target)
-          if (idx === -1) continue
-          if (e.isIntersecting) {
-            renderPage(block.pages[idx]).catch(() => {})
-            if (idx > 0) renderPage(block.pages[idx - 1]).catch(() => {})
-            if (idx < block.pages.length - 1) renderPage(block.pages[idx + 1]).catch(() => {})
-          } else {
-            releasePage(block.pages[idx])
-          }
-        }
-      },
-      { root: viewer, rootMargin: '200px' },
-    )
-
-    this.#pdfObserver = new IntersectionObserver(
-      (entries) => {
-        if (!this.#canTouchDom(gen, body)) return
-        for (const e of entries) {
-          const block = blocks.find((b) => b.blockEl === e.target)
-          if (!block) continue
-          if (e.isIntersecting) mountBlock(block)
-          else unmountBlock(block)
-        }
-      },
-      { root: viewer, rootMargin: '400px' },
-    )
-    blocks.forEach((b) => this.#pdfObserver?.observe(b.blockEl))
-    this.#pdfPageObserver = pageObserver
   }
 
   /** @param {{key: string, size?: number, lastModified?: number}} item */
