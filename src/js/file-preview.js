@@ -4,7 +4,7 @@ import { AUDIO_RE, IMAGE_RE, PDF_RE, TEXT_RE, VIDEO_RE } from './constants.js'
 import { t } from './i18n.js'
 import { R2Client } from './r2-client.js'
 import { UIManager } from './ui-manager.js'
-import { $, formatDate, getErrorMessage, extractFileName, getMimeType } from './utils.js'
+import { $, formatDate, getErrorMessage, extractFileName, getBaseName, getMimeType } from './utils.js'
 
 const PDF_MAX_SIZE = 50 * 1024 * 1024
 const PDF_DL_WEIGHT = 0.9
@@ -170,10 +170,11 @@ class FilePreview {
    * @param {number} gen
    * @param {(loaded: number, total: number) => void} [onParseProgress]
    * @param {AbortSignal} [signal]
+   * @param {string} [defaultPassword]
    */
-  async #loadPdfDocument(data, gen, onParseProgress, signal) {
+  async #loadPdfDocument(data, gen, onParseProgress, signal, defaultPassword = '') {
     const pdfBytes = new Uint8Array(data)
-    let password = ''
+    let password = defaultPassword
     for (;;) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       try {
@@ -193,7 +194,7 @@ class FilePreview {
         if (err?.name === 'AbortError' || signal?.aborted) throw err
         if (err?.name !== 'PasswordException') throw err
         const wrong = err.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD
-        const pw = await this.#ui.prompt(t('pdfPasswordTitle'), wrong ? t('pdfPasswordWrong') : t('pdfPasswordPrompt'), '', {
+        const pw = await this.#ui.prompt(t('pdfPasswordTitle'), wrong ? t('pdfPasswordWrong') : t('pdfPasswordPrompt'), wrong ? '' : defaultPassword, {
           hint: t('pdfPasswordHint'),
           inputType: 'password',
         })
@@ -270,6 +271,7 @@ class FilePreview {
         })
       },
       signal,
+      getBaseName(extractFileName(key)),
     )
     if (this.#isStale(gen)) return
     if (!this.#canTouchDom(gen, body)) return
